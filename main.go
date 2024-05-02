@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	requests []string
+	requests []map[string]interface{}
 	mu       sync.Mutex
 )
 
@@ -41,9 +41,27 @@ func handleAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	// JSON validation
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+		return
+	}
+
+	items, ok := data["cookie"].(string)
+	if !ok {
+		http.Error(w, "Invalid JSON format: 'cookie' key is missing or not a string", http.StatusBadRequest)
+		return
+	}
+
+	if items != "_abck" {
+		http.Error(w, "Invalid JSON format: 'cookie' value should contains '_abck'", http.StatusBadRequest)
+		return
+	}
+
 	mu.Lock()
 	defer mu.Unlock()
-	requests = append(requests, string(body))
+	requests = append(requests, data)
 }
 
 func handleGet(w http.ResponseWriter, r *http.Request) {
@@ -55,18 +73,20 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	response := struct {
-		Requests []string `json:"requests"`
-	}{
-		Requests: requests,
+	if len(requests) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("[]"))
+		return
+	}
+
+	response, err := json.Marshal(requests)
+	if err != nil {
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
 	}
 
 	requests = nil // Clear the array after getting its contents
 
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(response)
-	if err != nil {
-		http.Error(w, "Error encoding response", http.StatusInternalServerError)
-		return
-	}
+	w.Write(response)
 }
