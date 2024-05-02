@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -48,13 +49,13 @@ func handleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, ok := data["cookie"].(string)
+	abck, ok := data["cookie"].(string)
 	if !ok {
 		http.Error(w, "Invalid JSON format: 'cookie' key is missing or not a string", http.StatusBadRequest)
 		return
 	}
 
-	if items != "_abck" {
+	if !strings.Contains(abck, "_abck") {
 		http.Error(w, "Invalid JSON format: 'cookie' value should contains '_abck'", http.StatusBadRequest)
 		return
 	}
