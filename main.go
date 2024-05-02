@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -33,12 +34,12 @@ func handleAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := make([]byte, r.ContentLength)
-	_, err := r.Body.Read(body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusInternalServerError)
 		return
 	}
+	defer r.Body.Close()
 
 	mu.Lock()
 	defer mu.Unlock()
